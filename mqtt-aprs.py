@@ -35,7 +35,7 @@ from datetime import datetime, timedelta
 
 # Read the config file
 config = configparser.RawConfigParser()
-config.read("/etc/mqtt-aprs/mqtt-aprs.cfg")
+config.read(os.environ.get("CONFIG_PATH", "/etc/mqtt-aprs/mqtt-aprs.cfg"))
 
 # Use configparser to read the settings
 DEBUG = config.getboolean("global", "debug")
