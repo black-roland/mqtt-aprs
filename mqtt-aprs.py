@@ -65,34 +65,40 @@ client_id = APPNAME + "_%d" % os.getpid()
 
 mqttc = paho.Client()
 
-LOGFORMAT = '%(asctime)-15s %(message)s'
+LOGFORMAT = "%(asctime)-15s %(message)s"
 
 if DEBUG:
-    logging.basicConfig(level=logging.DEBUG,
-                        format=LOGFORMAT)
+    logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
 else:
-    logging.basicConfig(level=logging.INFO,
-                        format=LOGFORMAT)
+    logging.basicConfig(level=logging.INFO, format=LOGFORMAT)
 
 logging.info("Starting " + APPNAME)
 logging.info("INFO MODE")
 logging.debug("DEBUG MODE")
 
+
 def celciusConv(fahrenheit):
-    return (fahrenheit - 32) * (5/9)
+    return (fahrenheit - 32) * (5 / 9)
+
+
 def fahrenheitConv(celsius):
-    return ((celsius(9/5)) + 32)
+    return (celsius(9 / 5)) + 32
+
 
 # MQTT Callbacks
+
 
 def on_publish(mosq, obj, mid):
     logging.debug("MID" + str(mid) + " published.")
 
+
 def on_subscribe(mosq, obj, mid, qos_list):
     logging.debug("Subscribe with mid " + str(mid) + " received.")
 
+
 def on_unsubscribe(mosq, obj, mid):
     logging.debug("Unsubscribe with mid " + str(mid) + " received.")
+
 
 def on_connect(self, mosq, obj, result_code):
     logging.debug("on_connect RC: " + str(result_code))
@@ -120,6 +126,7 @@ def on_connect(self, mosq, obj, result_code):
         logging.warning("Someting went wrong. RC:" + str(result_code))
         cleanup()
 
+
 def on_disconnect(mosq, obj, result_code):
     if result_code == 0:
         logging.info("Clean disconnect")
@@ -128,14 +135,22 @@ def on_disconnect(mosq, obj, result_code):
         logging.debug("Result code: " + str(result_code))
         time.sleep(5)
 
+
 def on_message(mosq, obj, msg):
-    logging.debug("Received: " + msg.payload +
-                  " received on topic " + msg.topic +
-                  " with QoS " + str(msg.qos))
+    logging.debug(
+        "Received: "
+        + msg.payload
+        + " received on topic "
+        + msg.topic
+        + " with QoS "
+        + str(msg.qos)
+    )
     process_message(msg)
+
 
 def on_log(mosq, obj, level, string):
     logging.debug(string)
+
 
 def cleanup(signum, frame):
     logging.info("Disconnecting from broker")
@@ -144,6 +159,7 @@ def cleanup(signum, frame):
     mqttc.loop_stop()
     logging.info("Exiting on signal %d", signum)
     sys.exit(signum)
+
 
 def connect():
     logging.info("Connecting to %s:%s", MQTT_HOST, MQTT_PORT)
@@ -169,11 +185,14 @@ def connect():
         mqttc.on_log = on_log
     mqttc.loop_start()
 
+
 def process_connection():
     logging.debug("Processing connection")
 
+
 def process_message(mosq, obj, msg):
     logging.debug("Received: %s", msg.topic)
+
 
 def find_in_sublists(lst, value):
     for sub_i, sublist in enumerate(lst):
@@ -183,55 +202,65 @@ def find_in_sublists(lst, value):
             pass
     raise ValueError("%s is not in lists" % value)
 
+
 def callback(packet):
     logging.debug("Raw packet: %s", packet)
     publish_aprstomqtt_nossid(json.dumps(packet))
 
+
 def publish_aprstomqtt(inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inname
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode('utf-8').strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+
 
 def publish_aprstomqtt_ssid(inssid, inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inssid + "/" + inname
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode('utf-8').strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+
 
 def publish_aprstomqtt_nossid(invalue):
     topic_path = MQTT_TOPIC
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode('utf-8').strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+
 
 def get_distance(inlat, inlon):
     if APRS_LATITUDE and APRS_LONGITUDE:
         R = 6373.0
         from math import sin, cos, sqrt, atan2, radians
+
         lat1 = radians(float(APRS_LATITUDE))
         lon1 = radians(float(APRS_LONGITUDE))
         lat2 = radians(float(inlat))
         lon2 = radians(float(inlon))
         dlon = lon2 - lon1
         dlat = lat2 - lat1
-        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
         c = 2 * atan2(sqrt(a), sqrt(1 - a))
         distance = R * c
         if METRICUNITS == "0":
             distance = distance * 0.621371
         return round(distance, 2)
 
+
 def aprs_connect():
     aprs.set_filter(APRS_FILTER)
     aprs.connect(blocking=True)
     aprs.consumer(callback)
 
+
 signal.signal(signal.SIGTERM, cleanup)
 signal.signal(signal.SIGINT, cleanup)
 try:
-    aprs = aprslib.IS(APRS_CALLSIGN,
-                      passwd=APRS_PASSWORD,
-                      host=APRS_HOST,
-                      port=APRS_PORT,
-                      skip_login=False)
+    aprs = aprslib.IS(
+        APRS_CALLSIGN,
+        passwd=APRS_PASSWORD,
+        host=APRS_HOST,
+        port=APRS_PORT,
+        skip_login=False,
+    )
     connect()
     aprs_connect()
 
