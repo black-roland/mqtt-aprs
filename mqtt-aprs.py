@@ -54,7 +54,6 @@ APRS_PASSWORD = config.get("global", "aprs_password")
 APRS_HOST = config.get("global", "aprs_host")
 APRS_PORT = config.get("global", "aprs_port")
 APRS_FILTER = config.get("global", "aprs_filter")
-APRS_PROCESS = config.get("global", "aprs_process")
 
 APRS_LATITUDE = config.get("global", "aprs_latitude")
 APRS_LONGITUDE = config.get("global", "aprs_longitude")
@@ -88,7 +87,7 @@ def fahrenheitConv(celsius):
 
 def on_publish(mosq, obj, mid):
     logging.debug("MID" + str(mid) + " published.")
-    
+
 def on_subscribe(mosq, obj, mid, qos_list):
     logging.debug("Subscribe with mid " + str(mid) + " received.")
 
@@ -128,7 +127,7 @@ def on_disconnect(mosq, obj, result_code):
         logging.info("Unexpected disconnection! Reconnecting in 5 seconds")
         logging.debug("Result code: " + str(result_code))
         time.sleep(5)
-    
+
 def on_message(mosq, obj, msg):
     logging.debug("Received: " + msg.payload +
                   " received on topic " + msg.topic +
@@ -186,111 +185,7 @@ def find_in_sublists(lst, value):
 
 def callback(packet):
     logging.debug("Raw packet: %s", packet)
-    if APRS_PROCESS == "True":
-        aprspacket = aprs._parse(packet)
-        
-        ssid = aprspacket.get('from', 'None')
-        logging.debug("SSID: %s", ssid)
-        
-        rawpacket = aprspacket.get('raw', None)
-        logging.debug("RAW: %s", rawpacket)
-        publish_aprstomqtt_ssid(ssid, "raw", rawpacket)
-
-        if 'weather' in aprspacket:
-            logging.debug("incoming wx packet from: %s", ssid)
-            wx_lat = aprspacket.get('latitude', 0)
-            wx_lon = aprspacket.get('longitude', 0)
-            wx_hum = aprspacket.get('weather', {}).get('humidity', 0)
-            wx_pres = aprspacket.get('weather', {}).get('pressure', 0)
-            wx_rain_1h = aprspacket.get('weather', {}).get('rain_1h', 0)
-            wx_rain_24h = aprspacket.get('weather', {}).get('rain_24h', 0)
-            wx_temp = aprspacket.get('weather', {}).get('temperature', 0)
-            wx_wind_d = aprspacket.get('weather', {}).get('wind_direction', 0)
-            wx_wind_g = aprspacket.get('weather', {}).get('wind_gust', 0)
-            wx_wind_s = aprspacket.get('weather', {}).get('wind_speed', 0)
-            wx_report = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                          "\"lat\": " + str(wx_lat) + ", " \
-                          "\"lon\": " + str(wx_lon) + ", " \
-                          "\"humidity\": " + str(wx_hum) + ", " \
-                          "\"pressure\": " + str(wx_pres) + ", " \
-                          "\"rain_1h\": " + str(wx_rain_1h) + ", " \
-                          "\"rain_24h\": " + str(wx_rain_24h) + ", " \
-                          "\"temperature\": " + str(wx_temp) + ", " \
-                          "\"wind_direction\": " + str(wx_wind_d) + ", " \
-                          "\"wind_gust\": " + str(wx_wind_g) + ", " \
-                          "\"wind_speed\": " + str(wx_wind_s) + " }"
-            logging.debug("weather: %s", wx_report)
-            publish_aprstomqtt("weather", wx_report)
-        else:
-            packet_format = aprspacket.get('format', None)
-            if packet_format == 'uncompressed':
-                logging.debug("incoming uncompressed packet from: %s", ssid)
-                aprs_lat = aprspacket.get('latitude', 0)
-                aprs_lon = aprspacket.get('longitude', 0)
-                aprs_course = aprspacket.get('course', 0)
-                aprs_speed = aprspacket.get('speed', 0)
-                aprs_comment = aprspacket.get('comment', 0)
-                aprs_pos = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                             "\"comment\": \"" + str(aprs_comment) + "\", " \
-                             "\"lat\": " + str(aprs_lat) + ", " \
-                             "\"lon\": " + str(aprs_lon) + ", " \
-                             "\"course\": " + str(aprs_course) + ", " \
-                             "\"speed\": " + str(aprs_speed) + " }"
-                logging.debug("position: %s", aprs_pos)
-                publish_aprstomqtt("position", aprs_pos)
-            elif packet_format == 'compressed':
-                logging.debug("incoming compressed packet from: %s", ssid)
-                aprs_lat = aprspacket.get('latitude', 0)
-                aprs_lon = aprspacket.get('longitude', 0)
-                aprs_course = aprspacket.get('course', 0)
-                aprs_speed = aprspacket.get('speed', 0)
-                aprs_comment = aprspacket.get('comment', 0)
-                aprs_pos = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                             "\"comment\": \"" + str(aprs_comment) + "\", " \
-                             "\"lat\": " + str(aprs_lat) + ", " \
-                             "\"lon\": " + str(aprs_lon) + ", " \
-                             "\"course\": " + str(aprs_course) + ", " \
-                             "\"speed\": " + str(aprs_speed) + " }"
-                logging.debug("position: %s", aprs_pos)
-                publish_aprstomqtt("position", aprs_pos)
-            elif packet_format == 'mic-e':
-                logging.debug("incoming mic-e packet from: %s", ssid)
-                aprs_lat = aprspacket.get('latitude', 0)
-                aprs_lon = aprspacket.get('longitude', 0)
-                aprs_course = aprspacket.get('course', 0)
-                aprs_speed = aprspacket.get('speed', 0)
-                aprs_comment = aprspacket.get('comment', 0)
-                aprs_pos = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                             "\"comment\": \"" + str(aprs_comment) + "\", " \
-                             "\"lat\": " + str(aprs_lat) + ", " \
-                             "\"lon\": " + str(aprs_lon) + ", " \
-                             "\"course\": " + str(aprs_course) + ", " \
-                             "\"speed\": " + str(aprs_speed) + " }"
-                logging.debug("position: %s", aprs_pos)
-                publish_aprstomqtt("position", aprs_pos)
-            elif packet_format == 'object':
-                logging.debug("incoming object packet from: %s", ssid)
-                aprs_lat = aprspacket.get('latitude', 0)
-                aprs_lon = aprspacket.get('longitude', 0)
-                aprs_course = aprspacket.get('course', 0)
-                aprs_speed = aprspacket.get('speed', 0)
-                aprs_comment = aprspacket.get('comment', 0)
-                aprs_pos = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                             "\"comment\": \"" + str(aprs_comment) + "\", " \
-                             "\"lat\": " + str(aprs_lat) + ", " \
-                             "\"lon\": " + str(aprs_lon) + ", " \
-                             "\"course\": " + str(aprs_course) + ", " \
-                             "\"speed\": " + str(aprs_speed) + " }"
-                logging.debug("object: %s", aprs_pos)
-                publish_aprstomqtt("object", aprs_pos)
-            elif packet_format == 'message':
-                logging.debug("incoming message from: %s", ssid)
-                aprs_text = aprspacket.get('message_text', None)
-                aprs_message = "{ \"ssid\": \"" + str(ssid) + "\", " \
-                                 "\"message\": \"" + str(aprs_text) + "\" }"
-                publish_aprstomqtt("message", aprs_message)
-    else:
-        publish_aprstomqtt_nossid(json.dumps(packet))
+    publish_aprstomqtt_nossid(json.dumps(packet))
 
 def publish_aprstomqtt(inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inname
@@ -327,11 +222,7 @@ def get_distance(inlat, inlon):
 def aprs_connect():
     aprs.set_filter(APRS_FILTER)
     aprs.connect(blocking=True)
-    logging.debug("APRS Processing: %s", APRS_PROCESS)
-    if APRS_PROCESS == "True":
-        aprs.consumer(callback, raw=True)
-    else:
-        aprs.consumer(callback)
+    aprs.consumer(callback)
 
 signal.signal(signal.SIGTERM, cleanup)
 signal.signal(signal.SIGINT, cleanup)
