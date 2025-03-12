@@ -23,6 +23,7 @@ import logging
 import signal
 import socket
 import time
+import json
 
 import paho.mqtt.client as paho
 import configparser
@@ -292,7 +293,7 @@ def callback(packet):
                                  "\"message\": \"" + str(aprs_text) + "\" }"
                 publish_aprstomqtt("message", aprs_message)
     else:
-        publish_aprstomqtt_nossid(packet)
+        publish_aprstomqtt_nossid(json.dumps(packet))
 
 def publish_aprstomqtt(inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inname
