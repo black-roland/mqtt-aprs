@@ -44,7 +44,7 @@ MQTT_HOST = config.get("global", "mqtt_host")
 MQTT_PORT = config.getint("global", "mqtt_port")
 MQTT_TLS = config.getint("global", "mqtt_tls")
 MQTT_SUBTOPIC = config.get("global", "mqtt_subtopic")
-MQTT_TOPIC = "/raw/" + socket.getfqdn() + "/" + MQTT_SUBTOPIC
+MQTT_TOPIC = config.get("global", "mqtt_prefix") + "/" + MQTT_SUBTOPIC
 MQTT_USERNAME = config.get("global", "mqtt_username")
 MQTT_PASSWORD = config.get("global", "mqtt_password")
 METRICUNITS = config.get("global", "metricunits")
@@ -60,8 +60,8 @@ APRS_LATITUDE = config.get("global", "aprs_latitude")
 APRS_LONGITUDE = config.get("global", "aprs_longitude")
 
 APPNAME = MQTT_SUBTOPIC
-PRESENCETOPIC = "clients/" + socket.getfqdn() + "/" + APPNAME +"/state"
-setproctitle.setproctitle(APPNAME)
+PRESENCETOPIC = MQTT_TOPIC + "/state"
+setproctitle.setproctitle("mqtt-aprs " + APPNAME)
 client_id = APPNAME + "_%d" % os.getpid()
 
 mqttc = paho.Client()
