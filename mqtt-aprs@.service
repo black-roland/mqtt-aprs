@@ -1,0 +1,25 @@
+[Unit]
+Description=APRS-IS to MQTT
+After=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+ExecStart=/opt/mqtt-aprs/mqtt-aprs.py
+Environment=CONFIG_PATH=/etc/mqtt-aprs/%I.cfg
+SyslogIdentifier=mqtt-aprs-%I
+Restart=always
+RestartSec=5
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
