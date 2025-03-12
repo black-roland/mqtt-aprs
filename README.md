@@ -66,11 +66,7 @@ The `aprs/rotate` topic (or any subtopic like `primary` or `fallback`) publishes
     "raw": "N0CALL-9>APRS,TCPIP*,qAC,T2TEST:!4903.50N/07201.75W#PHG5630/Test comment",
     "from": "N0CALL-9",
     "to": "APRS",
-    "path": [
-      "TCPIP*",
-      "qAC",
-      "T2TEST"
-    ],
+    "path": ["TCPIP*", "qAC", "T2TEST"],
     "via": "T2TEST",
     "messagecapable": false,
     "format": "uncompressed",
@@ -93,7 +89,7 @@ The configuration file (`/etc/mqtt-aprs/rotate.cfg`) supports the following opti
 - `MQTT_HOST`: MQTT broker host.
 - `MQTT_PORT`: MQTT broker port.
 - `MQTT_TLS`: Enable or disable TLS.
-- `MQTT_TOPIC`: Base MQTT topic.
+- `MQTT_PREFIX`: Base MQTT topic.
 - `MQTT_SUBTOPIC`: Sub-topic for MQTT (e.g., `primary`, `fallback`, `rotate`).
 - `MQTT_USERNAME`: MQTT username.
 - `MQTT_PASSWORD`: MQTT password.
