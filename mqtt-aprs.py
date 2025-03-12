@@ -40,7 +40,6 @@ config.read(os.environ.get("CONFIG_PATH", "/etc/mqtt-aprs/mqtt-aprs.cfg"))
 
 # Use configparser to read the settings
 DEBUG = config.getboolean("global", "debug")
-LOGFILE = config.get("global", "logfile")
 MQTT_HOST = config.get("global", "mqtt_host")
 MQTT_PORT = config.getint("global", "mqtt_port")
 MQTT_TLS = config.getint("global", "mqtt_tls")
@@ -70,12 +69,10 @@ mqttc = paho.Client()
 LOGFORMAT = '%(asctime)-15s %(message)s'
 
 if DEBUG:
-    logging.basicConfig(filename=LOGFILE,
-                        level=logging.DEBUG,
+    logging.basicConfig(level=logging.DEBUG,
                         format=LOGFORMAT)
 else:
-    logging.basicConfig(filename=LOGFILE,
-                        level=logging.INFO,
+    logging.basicConfig(level=logging.INFO,
                         format=LOGFORMAT)
 
 logging.info("Starting " + APPNAME)
