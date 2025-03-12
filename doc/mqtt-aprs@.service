@@ -1,15 +1,24 @@
 [Unit]
-Description=APRS-IS to MQTT
+Description=APRS-IS to MQTT Gateway
 After=network-online.target
 
 [Service]
 Type=simple
 DynamicUser=yes
 ExecStart=/opt/mqtt-aprs/mqtt-aprs.py
+
+# Multiple instances can be run with different configurations, e.g., mqtt-aprs@primary and mqtt-aprs@fallback
+# Each instance will use a unique configuration file located at /etc/mqtt-aprs/%I.cfg
 Environment=CONFIG_PATH=/etc/mqtt-aprs/%I.cfg
+
+# Use a unique identifier for each instance in the system logs
 SyslogIdentifier=mqtt-aprs-%I
+
+# Automatically restart the service if it fails
 Restart=always
 RestartSec=5
+
+# Security and sandboxing options
 ProtectSystem=strict
 ProtectHome=yes
 PrivateDevices=yes
