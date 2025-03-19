@@ -13,14 +13,13 @@ This script uses:
 
 - aprslib (pip3 install aprslib)
 - paho-mqtt (pip3 install paho-mqtt)
+- setproctitle (pip3 install setproctitle)
 
 ### USE
 
 ```bash
-git clone https://github.com/kc1awv/mqtt-aprs.git
-
+git clone https://github.com/black-roland/mqtt-aprs
 cd mqtt-aprs
-
 sudo cp doc/rotate.cfg /etc/mqtt-aprs/rotate.cfg
 ```
 
