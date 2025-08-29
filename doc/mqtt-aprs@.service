@@ -15,8 +15,9 @@ Environment=CONFIG_PATH=/etc/mqtt-aprs/%I.cfg
 SyslogIdentifier=mqtt-aprs-%I
 
 # Automatically restart the service if it fails
-Restart=always
+Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10
 
 # Security and sandboxing options
 ProtectSystem=strict

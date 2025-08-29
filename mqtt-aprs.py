@@ -66,9 +66,12 @@ PRESENCETOPIC = MQTT_TOPIC + "/state"
 setproctitle.setproctitle("mqtt-aprs " + APPNAME)
 client_id = APPNAME + "_%d" % os.getpid()
 
-mqttc = paho.Client(paho.CallbackAPIVersion.VERSION2)
-
 LOGFORMAT = "%(asctime)-15s %(message)s"
+
+mqttc = paho.Client(paho.CallbackAPIVersion.VERSION2)
+aprs = None
+
+is_shutting_down = False
 
 if DEBUG:
     logging.basicConfig(level=logging.DEBUG, format=LOGFORMAT)
@@ -113,31 +116,34 @@ def on_connect(client, userdata, connect_flags, reason_code, properties):
         process_connection()
     elif reason_code == 1:
         logging.error("Connection refused - unacceptable protocol version")
-        cleanup()
+        cleanup(1)
     elif reason_code == 2:
         logging.error("Connection refused - identifier rejected")
-        cleanup()
+        cleanup(2)
     elif reason_code == 3:
         logging.warning("Connection refused - server unavailable, retrying in 30 seconds")
         time.sleep(30)
     elif reason_code == 4:
         logging.error("Connection refused - bad username or password")
-        cleanup()
+        cleanup(4)
     elif reason_code == 5:
         logging.error("Connection refused - not authorized")
-        cleanup()
+        cleanup(5)
     else:
         logging.error("Connection failed with unknown reason code: %d", reason_code)
-        cleanup()
+        cleanup(reason_code)
 
 
-def on_disconnect(client, userdata, reason_code, properties):
+def on_disconnect(client, userdata, reason_code, properties=None, rc=None):
+    global is_shutting_down
     if reason_code == 0:
         logging.info("Cleanly disconnected from MQTT broker")
-    else:
-        logging.warning("Unexpected disconnection from MQTT broker (reason code: %d)", reason_code)
+    elif not is_shutting_down:
+        logging.warning("Unexpected disconnection from MQTT broker (reason code: %s)", str(reason_code))
         logging.info("Reconnecting in 5 seconds...")
         time.sleep(5)
+    else:
+        logging.info("Disconnected from MQTT broker during shutdown (reason code: %s)", str(reason_code))
 
 
 def on_message(client, userdata, msg):
@@ -150,14 +156,30 @@ def on_log(client, userdata, level, buf):
     logging.debug("MQTT client log: %s", buf)
 
 
-def cleanup(signum, frame):
+def cleanup(signum=0, frame=None):
+    global is_shutting_down
+    is_shutting_down = True
     logging.info("Received signal %d, shutting down gracefully", signum)
-    logging.info("Disconnecting from MQTT broker")
-    mqttc.publish(PRESENCETOPIC, "0", qos=0, retain=True)
-    mqttc.disconnect()
-    mqttc.loop_stop()
-    logging.info("Shutdown complete")
-    sys.exit(signum)
+    try:
+        # Disconnect MQTT client
+        logging.info("Disconnecting from MQTT broker")
+        mqttc.publish(PRESENCETOPIC, "0", qos=0, retain=True)
+        mqttc.disconnect()
+        mqttc.loop_stop()
+        # Close APRS connection if it exists
+        if aprs is not None:
+            logging.info("Closing APRS-IS connection")
+            try:
+                aprs.close()
+            except Exception as e:
+                logging.error("Error closing APRS connection: %s", e)
+        # Small delay to ensure MQTT loop thread terminates
+        time.sleep(0.5)
+    except Exception as e:
+        logging.error("Error during shutdown: %s", e)
+    finally:
+        logging.info("Shutdown complete")
+        sys.exit(0 if signum in [2, 15] else signum)
 
 
 def connect():
@@ -269,7 +291,7 @@ try:
 
 except KeyboardInterrupt:
     logging.info("Interrupted by keypress")
-    sys.exit(0)
+    cleanup(0)
 except aprslib.ConnectionDrop:
     logging.info("Connection to APRS server dropped, trying again in 30 seconds...")
     time.sleep(30)
@@ -277,4 +299,7 @@ except aprslib.ConnectionDrop:
 except aprslib.ConnectionError:
     logging.info("Connection to APRS server failed, trying again in 30 seconds...")
     time.sleep(30)
-    aprs_connect
+    aprs_connect()
+except Exception as e:
+    logging.error("Unexpected error: %s", e)
+    cleanup(1)
