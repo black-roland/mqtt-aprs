@@ -6,7 +6,7 @@ __copyright__ = "Copyright (C) Steve Miller"
 
 __credits__ = ["Mike Loebl - https://github.com/mloebl/mqtt-aprs"]
 __license__ = "GPL"
-__version__ = "0.0.1"
+__version__ = "2.0.0"
 __maintainer__ = "Steve Miller"
 __email__ = "smiller _at_ kc1awv _dot_ net"
 __status__ = "Development"
@@ -17,19 +17,17 @@ __status__ = "Development"
 # Source: https://github.com/mloebl/mqtt-aprs
 # APRS is a registered trademark Bob Bruninga, WB4APR
 
-import os
-import sys
-import logging
-import signal
-import time
-import json
-
-import paho.mqtt.client as paho
 import configparser
-
-import setproctitle
+import json
+import logging
+import os
+import signal
+import sys
+import time
 
 import aprslib
+import paho.mqtt.client as paho
+import setproctitle
 
 # Read the config file
 config = configparser.RawConfigParser()
@@ -77,9 +75,11 @@ if DEBUG:
 else:
     logging.basicConfig(level=logging.INFO, format=LOGFORMAT)
 
-logging.info("Starting " + APPNAME)
-logging.info("INFO MODE")
-logging.debug("DEBUG MODE")
+logging.info("Starting %s service", APPNAME)
+if DEBUG:
+    logging.info("Running in DEBUG mode")
+else:
+    logging.info("Running in INFO mode")
 
 
 def celciusConv(fahrenheit):
@@ -94,90 +94,84 @@ def fahrenheitConv(celsius):
 
 
 def on_publish(client, userdata, mid, reason_code, properties):
-    logging.debug("MID" + str(mid) + " published.")
+    logging.debug("Message published with ID: %d", mid)
 
 
 def on_subscribe(client, userdata, mid, reason_code_list, properties):
-    logging.debug("Subscribe with mid " + str(mid) + " received.")
+    logging.debug("Subscription acknowledged for MID: %d", mid)
 
 
 def on_unsubscribe(client, userdata, mid, reason_code, properties):
-    logging.debug("Unsubscribe with mid " + str(mid) + " received.")
+    logging.debug("Unsubscription acknowledged for MID: %d", mid)
 
 
 def on_connect(client, userdata, connect_flags, reason_code, properties):
-    logging.debug("on_connect RC: " + str(reason_code))
+    logging.debug("Connection callback - Reason code: %d", reason_code)
     if reason_code == 0:
-        logging.info("Connected to %s:%s", MQTT_HOST, MQTT_PORT)
+        logging.info("Successfully connected to MQTT broker at %s:%s", MQTT_HOST, MQTT_PORT)
         mqttc.publish(PRESENCETOPIC, "1", qos=0, retain=True)
         process_connection()
     elif reason_code == 1:
-        logging.info("Connection refused - unacceptable protocol version")
+        logging.error("Connection refused - unacceptable protocol version")
         cleanup()
     elif reason_code == 2:
-        logging.info("Connection refused - identifier rejected")
+        logging.error("Connection refused - identifier rejected")
         cleanup()
     elif reason_code == 3:
-        logging.info("Connection refused - server unavailable")
-        logging.info("Retrying in 30 seconds")
+        logging.warning("Connection refused - server unavailable, retrying in 30 seconds")
         time.sleep(30)
     elif reason_code == 4:
-        logging.info("Connection refused - bad username or password")
+        logging.error("Connection refused - bad username or password")
         cleanup()
     elif reason_code == 5:
-        logging.info("Connection refused - not authorized")
+        logging.error("Connection refused - not authorized")
         cleanup()
     else:
-        logging.warning("Someting went wrong. RC:" + str(reason_code))
+        logging.error("Connection failed with unknown reason code: %d", reason_code)
         cleanup()
 
 
 def on_disconnect(client, userdata, reason_code, properties):
     if reason_code == 0:
-        logging.info("Clean disconnect")
+        logging.info("Cleanly disconnected from MQTT broker")
     else:
-        logging.info("Unexpected disconnection! Reconnecting in 5 seconds")
-        logging.debug("Result code: " + str(reason_code))
+        logging.warning("Unexpected disconnection from MQTT broker (reason code: %d)", reason_code)
+        logging.info("Reconnecting in 5 seconds...")
         time.sleep(5)
 
 
 def on_message(client, userdata, msg):
-    logging.debug(
-        "Received: "
-        + msg.payload
-        + " received on topic "
-        + msg.topic
-        + " with QoS "
-        + str(msg.qos)
-    )
+    logging.debug("MQTT message received on topic '%s' with QoS %d: %s",
+                  msg.topic, msg.qos, msg.payload)
     process_message(msg)
 
 
 def on_log(client, userdata, level, buf):
-    logging.debug(buf)
+    logging.debug("MQTT client log: %s", buf)
 
 
 def cleanup(signum, frame):
-    logging.info("Disconnecting from broker")
+    logging.info("Received signal %d, shutting down gracefully", signum)
+    logging.info("Disconnecting from MQTT broker")
     mqttc.publish(PRESENCETOPIC, "0", qos=0, retain=True)
     mqttc.disconnect()
     mqttc.loop_stop()
-    logging.info("Exiting on signal %d", signum)
+    logging.info("Shutdown complete")
     sys.exit(signum)
 
 
 def connect():
-    logging.info("Connecting to %s:%s", MQTT_HOST, MQTT_PORT)
+    logging.info("Connecting to MQTT broker at %s:%s", MQTT_HOST, MQTT_PORT)
     if MQTT_USERNAME:
-        logging.info("Found username %s", MQTT_USERNAME)
+        logging.debug("Setting MQTT username '%s'", MQTT_USERNAME)
         mqttc.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     if MQTT_TLS == 1:
-        logging.info("Using TLS for broker connection")
+        logging.info("Enabling TLS for MQTT connection")
         mqttc.tls_set()
     mqttc.will_set(PRESENCETOPIC, "0", qos=0, retain=True)
     result = mqttc.connect(MQTT_HOST, MQTT_PORT, 10)
     if result != 0:
-        logging.info("Connection failed with error code %s. Retrying", result)
+        logging.warning("MQTT connection failed with error code %s, retrying in 10 seconds", result)
         time.sleep(10)
         connect()
     mqttc.on_connect = on_connect
@@ -209,32 +203,32 @@ def find_in_sublists(lst, value):
 
 
 def callback(packet):
-    logging.debug("Raw packet: %s", packet)
+    logging.debug("APRS packet received: %s", packet)
     publish_aprstomqtt_nossid(json.dumps(packet))
 
 
 def publish_aprstomqtt(inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inname
-    logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
+    logging.debug("Publishing to MQTT topic '%s': %s", topic_path, invalue)
     mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def publish_aprstomqtt_ssid(inssid, inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inssid + "/" + inname
-    logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
+    logging.debug("Publishing to MQTT topic '%s': %s", topic_path, invalue)
     mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def publish_aprstomqtt_nossid(invalue):
     topic_path = MQTT_TOPIC
-    logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
+    logging.debug("Publishing to MQTT topic '%s': %s", topic_path, invalue)
     mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def get_distance(inlat, inlon):
     if APRS_LATITUDE and APRS_LONGITUDE:
         R = 6373.0
-        from math import sin, cos, sqrt, atan2, radians
+        from math import atan2, cos, radians, sin, sqrt
 
         lat1 = radians(float(APRS_LATITUDE))
         lon1 = radians(float(APRS_LONGITUDE))
@@ -251,8 +245,12 @@ def get_distance(inlat, inlon):
 
 
 def aprs_connect():
-    aprs.set_filter(APRS_FILTER)
+    logging.info("Connecting to APRS-IS server at %s:%s", APRS_HOST, APRS_PORT)
+    if APRS_FILTER:
+        logging.debug("Setting APRS filter: %s", APRS_FILTER)
+        aprs.set_filter(APRS_FILTER)
     aprs.connect(blocking=True)
+    logging.info("APRS-IS connection established, starting message consumer")
     aprs.consumer(callback)
 
 
