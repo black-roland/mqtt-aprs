@@ -21,7 +21,6 @@ import os
 import sys
 import logging
 import signal
-import socket
 import time
 import json
 
@@ -31,8 +30,6 @@ import configparser
 import setproctitle
 
 import aprslib
-
-from datetime import datetime, timedelta
 
 # Read the config file
 config = configparser.RawConfigParser()
@@ -71,7 +68,7 @@ PRESENCETOPIC = MQTT_TOPIC + "/state"
 setproctitle.setproctitle("mqtt-aprs " + APPNAME)
 client_id = APPNAME + "_%d" % os.getpid()
 
-mqttc = paho.Client()
+mqttc = paho.Client(paho.CallbackAPIVersion.VERSION2)
 
 LOGFORMAT = "%(asctime)-15s %(message)s"
 
@@ -90,61 +87,61 @@ def celciusConv(fahrenheit):
 
 
 def fahrenheitConv(celsius):
-    return (celsius(9 / 5)) + 32
+    return (celsius * (9 / 5)) + 32
 
 
 # MQTT Callbacks
 
 
-def on_publish(mosq, obj, mid):
+def on_publish(client, userdata, mid, reason_code, properties):
     logging.debug("MID" + str(mid) + " published.")
 
 
-def on_subscribe(mosq, obj, mid, qos_list):
+def on_subscribe(client, userdata, mid, reason_code_list, properties):
     logging.debug("Subscribe with mid " + str(mid) + " received.")
 
 
-def on_unsubscribe(mosq, obj, mid):
+def on_unsubscribe(client, userdata, mid, reason_code, properties):
     logging.debug("Unsubscribe with mid " + str(mid) + " received.")
 
 
-def on_connect(self, mosq, obj, result_code):
-    logging.debug("on_connect RC: " + str(result_code))
-    if result_code == 0:
+def on_connect(client, userdata, connect_flags, reason_code, properties):
+    logging.debug("on_connect RC: " + str(reason_code))
+    if reason_code == 0:
         logging.info("Connected to %s:%s", MQTT_HOST, MQTT_PORT)
         mqttc.publish(PRESENCETOPIC, "1", qos=0, retain=True)
         process_connection()
-    elif result_code == 1:
+    elif reason_code == 1:
         logging.info("Connection refused - unacceptable protocol version")
         cleanup()
-    elif result_code == 2:
+    elif reason_code == 2:
         logging.info("Connection refused - identifier rejected")
         cleanup()
-    elif result_code == 3:
+    elif reason_code == 3:
         logging.info("Connection refused - server unavailable")
         logging.info("Retrying in 30 seconds")
         time.sleep(30)
-    elif result_code == 4:
+    elif reason_code == 4:
         logging.info("Connection refused - bad username or password")
         cleanup()
-    elif result_code == 5:
+    elif reason_code == 5:
         logging.info("Connection refused - not authorized")
         cleanup()
     else:
-        logging.warning("Someting went wrong. RC:" + str(result_code))
+        logging.warning("Someting went wrong. RC:" + str(reason_code))
         cleanup()
 
 
-def on_disconnect(mosq, obj, result_code):
-    if result_code == 0:
+def on_disconnect(client, userdata, reason_code, properties):
+    if reason_code == 0:
         logging.info("Clean disconnect")
     else:
         logging.info("Unexpected disconnection! Reconnecting in 5 seconds")
-        logging.debug("Result code: " + str(result_code))
+        logging.debug("Result code: " + str(reason_code))
         time.sleep(5)
 
 
-def on_message(mosq, obj, msg):
+def on_message(client, userdata, msg):
     logging.debug(
         "Received: "
         + msg.payload
@@ -156,8 +153,8 @@ def on_message(mosq, obj, msg):
     process_message(msg)
 
 
-def on_log(mosq, obj, level, string):
-    logging.debug(string)
+def on_log(client, userdata, level, buf):
+    logging.debug(buf)
 
 
 def cleanup(signum, frame):
@@ -198,7 +195,7 @@ def process_connection():
     logging.debug("Processing connection")
 
 
-def process_message(mosq, obj, msg):
+def process_message(msg):
     logging.debug("Received: %s", msg.topic)
 
 
@@ -278,7 +275,7 @@ except KeyboardInterrupt:
 except aprslib.ConnectionDrop:
     logging.info("Connection to APRS server dropped, trying again in 30 seconds...")
     time.sleep(30)
-    aprs_connect
+    aprs_connect()
 except aprslib.ConnectionError:
     logging.info("Connection to APRS server failed, trying again in 30 seconds...")
     time.sleep(30)
