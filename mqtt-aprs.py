@@ -66,7 +66,7 @@ PRESENCETOPIC = MQTT_TOPIC + "/state"
 setproctitle.setproctitle("mqtt-aprs " + APPNAME)
 client_id = APPNAME + "_%d" % os.getpid()
 
-LOGFORMAT = "%(asctime)-15s %(message)s"
+LOGFORMAT = "%(message)s"
 
 mqttc = paho.Client(paho.CallbackAPIVersion.VERSION2)
 aprs = None
