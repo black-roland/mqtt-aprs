@@ -48,6 +48,7 @@ MQTT_TOPIC = config.get("global", "mqtt_prefix") + "/" + MQTT_SUBTOPIC
 MQTT_USERNAME = config.get("global", "mqtt_username")
 MQTT_PASSWORD = config.get("global", "mqtt_password")
 METRICUNITS = config.get("global", "metricunits")
+MQTT_QOS = config.getint("global", "mqtt_qos", fallback=1)
 
 APRS_CALLSIGN = config.get("global", "aprs_callsign")
 APRS_PASSWORD = config.get("global", "aprs_password")
@@ -104,7 +105,7 @@ def on_connect(self, mosq, obj, result_code):
     logging.debug("on_connect RC: " + str(result_code))
     if result_code == 0:
         logging.info("Connected to %s:%s", MQTT_HOST, MQTT_PORT)
-        mqttc.publish(PRESENCETOPIC, "1", retain=True)
+        mqttc.publish(PRESENCETOPIC, "1", qos=0, retain=True)
         process_connection()
     elif result_code == 1:
         logging.info("Connection refused - unacceptable protocol version")
@@ -154,7 +155,7 @@ def on_log(mosq, obj, level, string):
 
 def cleanup(signum, frame):
     logging.info("Disconnecting from broker")
-    mqttc.publish(PRESENCETOPIC, "0", retain=True)
+    mqttc.publish(PRESENCETOPIC, "0", qos=0, retain=True)
     mqttc.disconnect()
     mqttc.loop_stop()
     logging.info("Exiting on signal %d", signum)
@@ -211,19 +212,19 @@ def callback(packet):
 def publish_aprstomqtt(inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inname
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def publish_aprstomqtt_ssid(inssid, inname, invalue):
     topic_path = MQTT_TOPIC + "/" + inssid + "/" + inname
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def publish_aprstomqtt_nossid(invalue):
     topic_path = MQTT_TOPIC
     logging.debug("Publishing topic: %s with value %s" % (topic_path, invalue))
-    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip())
+    mqttc.publish(topic_path, str(invalue).encode("utf-8").strip(), qos=MQTT_QOS)
 
 
 def get_distance(inlat, inlon):
