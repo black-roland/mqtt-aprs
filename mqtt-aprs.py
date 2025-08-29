@@ -44,7 +44,14 @@ MQTT_HOST = config.get("global", "mqtt_host")
 MQTT_PORT = config.getint("global", "mqtt_port")
 MQTT_TLS = config.getint("global", "mqtt_tls")
 MQTT_SUBTOPIC = config.get("global", "mqtt_subtopic")
-MQTT_TOPIC = config.get("global", "mqtt_prefix") + "/" + MQTT_SUBTOPIC
+# Support both mqtt_root (new) and mqtt_prefix (legacy) for backward compatibility
+try:
+    MQTT_ROOT = config.get("global", "mqtt_root")
+    MQTT_TOPIC = MQTT_ROOT + "/" + MQTT_SUBTOPIC
+except configparser.NoOptionError:
+    # Fall back to legacy mqtt_prefix if mqtt_root is not defined
+    MQTT_PREFIX = config.get("global", "mqtt_prefix")
+    MQTT_TOPIC = MQTT_PREFIX + "/" + MQTT_SUBTOPIC
 MQTT_USERNAME = config.get("global", "mqtt_username")
 MQTT_PASSWORD = config.get("global", "mqtt_password")
 METRICUNITS = config.get("global", "metricunits")

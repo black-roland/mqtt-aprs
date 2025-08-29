@@ -88,7 +88,8 @@ The configuration file (`/etc/mqtt-aprs/rotate.cfg`) supports the following opti
 - `MQTT_HOST`: MQTT broker host.
 - `MQTT_PORT`: MQTT broker port.
 - `MQTT_TLS`: Enable or disable TLS.
-- `MQTT_PREFIX`: Base MQTT topic.
+- `MQTT_ROOT`: Base MQTT topic.
+- `MQTT_QOS`: MQTT Quality of Service level (0, 1, or 2).
 - `MQTT_SUBTOPIC`: Sub-topic for MQTT (e.g., `primary`, `fallback`, `rotate`).
 - `MQTT_USERNAME`: MQTT username.
 - `MQTT_PASSWORD`: MQTT password.
